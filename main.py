@@ -1,6 +1,7 @@
 # Импортируем необходимые классы.
 import logging
 
+from telegram import ReplyKeyboardMarkup
 from telegram.ext import Application, MessageHandler, filters, CommandHandler, ConversationHandler
 
 # Запускаем логгирование
@@ -37,13 +38,13 @@ def main():
         # Вариант с двумя обработчиками, фильтрующими текстовые сообщения.
         states={
             # Функция читает ответ на первый вопрос и задаёт второй.
-            1: [MessageHandler(filters.TEXT, first_response)],
+            1: [MessageHandler(filters.TEXT & ~filters.COMMAND, first_room)],
             # Функция читает ответ на второй вопрос и завершает диалог.
-            2: [MessageHandler(filters.TEXT & ~filters.COMMAND, second_response)],
-            3: [MessageHandler(filters.TEXT & ~filters.COMMAND, third_response)]
+            2: [MessageHandler(filters.TEXT & ~filters.COMMAND, second_room)],
+            3: [MessageHandler(filters.TEXT & ~filters.COMMAND, third_room)],
+            4: [MessageHandler(filters.TEXT & ~filters.COMMAND, fourth_room)],
+            5: [MessageHandler(filters.TEXT & ~filters.COMMAND, five)]
         },
-
-        # Точка прерывания диалога. В данном случае — команда /stop.
         fallbacks=[CommandHandler('stop', stop)]
     )
 
@@ -54,10 +55,9 @@ def main():
 
 
 async def start(update, context):
+    markup = ReplyKeyboardMarkup([['вход']], one_time_keyboard=True)
     await update.message.reply_text(
-        "Привет. Пройдите небольшой опрос, пожалуйста!\n"
-        "Вы можете прервать опрос, послав команду /stop.\n"
-        "В каком городе вы живёте?")
+        'Добро пожаловать! Пожалуйста, сдайте верхнюю одежду в гардероб', reply_markup=markup)
 
     # Число-ключ в словаре states —
     # втором параметре ConversationHandler'а.
@@ -69,43 +69,60 @@ async def start(update, context):
     # поэтому текстовые сообщения игнорировались.
 
 
-async def first_response(update, context):
+async def first_room(update, context):
     # Это ответ на первый вопрос.
     # Мы можем использовать его во втором вопросе.
-    locality = update.message.text
-    print(locality, 1)
-    if locality == '/skip':
-        await update.message.reply_text(f"Какая погода у вас за окном?")
-        return 3
-    await update.message.reply_text(
-        f"Какая погода в городе {locality}?")
-    # Следующее текстовое сообщение будет обработано
-    # обработчиком states[2]
-    return 2
+    text = update.message.text
+    if text == 'вход' or text == 'перейти в зал 1':
+        markup = ReplyKeyboardMarkup([['перейти в зал 2', 'выход']], one_time_keyboard=True)
+        await update.message.reply_text(
+            'Зал 1 В данном зале представлено...(Описание). Можно перейти в зал 2 (кр. описание)', reply_markup=markup)
+        return 2
 
 
-async def second_response(update, context):
+async def second_room(update, context):
     # Ответ на второй вопрос.
     # Мы можем его сохранить в базе данных или переслать куда-либо.
-    weather = update.message.text
-    print(weather, 1)
-    logger.info(weather)
-    if weather == '/skip':
-        await update.message.reply_text(f"Какая погода у вас за окном?")
+    text = update.message.text
+    if text == 'перейти в зал 2':
+        markup = ReplyKeyboardMarkup([['перейти в зал 3']], one_time_keyboard=True)
+        await update.message.reply_text(
+            'Зал 2 В данном зале представлено...(Описание). Можно перейти в зал 3 (кр. описание)', reply_markup=markup)
         return 3
+    elif text == 'выход':
+        await update.message.reply_text('Всего доброго, не забудьте забрать верхнюю одежду в гардеробе!')
+        return ConversationHandler.END
 
-    await update.message.reply_text("Спасибо за участие в опросе! Всего доброго!")
-    return ConversationHandler.END  # Константа, означающая конец диалога.
-    # Все обработчики из states и fallbacks становятся неактивными.
+
+async def third_room(update, context):
+    text = update.message.text
+    if text == 'перейти в зал 3':
+        markup = ReplyKeyboardMarkup([['перейти в зал 4', 'перейти в зал 1']], one_time_keyboard=True)
+        await update.message.reply_text(
+            'Зал 3 В данном зале представлено...(Описание). Можно перейти в зал 4 (кр. описание) и зал 1 (кр. описание)',
+            reply_markup=markup)
+        return 5
 
 
-async def third_response(update, context):
-    await update.message.reply_text("Спасибо за участие в опросе! Всего доброго!")
-    return ConversationHandler.END  # Константа, означающая конец диалога.
+async def fourth_room(update, context):
+    text = update.message.text
+    if text == 'перейти в зал 4':
+        markup = ReplyKeyboardMarkup([['перейти в зал 1']], one_time_keyboard=True)
+        await update.message.reply_text(
+            'Зал 4 В данном зале представлено...(Описание). Можно перейти в зал 1 (кр. описание)', reply_markup=markup)
+        return 1
 
+
+async def five(update, context):
+    text = update.message.text
+    if text == 'перейти в зал 1':
+        return await first_room(update, context)
+
+    elif text == 'перейти в зал 4':
+        return await fourth_room(update, context)
 
 async def stop(update, context):
-    await update.message.reply_text("Всего доброго!")
+    await update.message.reply_text("Диалог завершен.")
     return ConversationHandler.END
 
 # Запускаем функцию main() в случае запуска скрипта.

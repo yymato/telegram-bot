@@ -1,6 +1,7 @@
 # Импортируем необходимые классы.
+import json
 import logging
-import string
+import random
 
 from telegram.ext import Application, MessageHandler, filters, CommandHandler
 
@@ -10,23 +11,8 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-user_sess = {}
-poem = '''— Скажи-ка, дядя, ведь не даром
-Москва, спаленная пожаром,
-Французу отдана?
-Ведь были ж схватки боевые,
-Да, говорят, еще какие!'''
-
-poem_without_punc = poem.lower()
-for i in string.punctuation:
-    if i == '-':
-        continue
-    poem_without_punc = poem_without_punc.replace(i, '')
-
-poem_without_punc = poem_without_punc.replace('—', '').split('\n')
-poem = poem.split('\n')
-print(poem)
-print(poem_without_punc)
+with open('data.json', 'r', encoding='utf-8') as f:
+    question = json.load(f)['test']
 
 
 def main():
@@ -42,6 +28,7 @@ def main():
     # Регистрируем обработчик в приложении.
 
     application.add_handler(CommandHandler('start', start))
+    application.add_handler(CommandHandler('stop', stop))
     application.add_handler(MessageHandler(filters.TEXT, echo))
 
     # Запускаем приложение.
@@ -49,36 +36,37 @@ def main():
 
 
 async def start(update, context):
-    context.user_data['poem_index'] = 0
-    await update.message.reply_text(
-        poem[context.user_data['poem_index']])
+    context.user_data['last_indexes'] = [random.randint(0, len(question) - 1)]
+    context.user_data['right_response'] = 0
+    quest = question[context.user_data['last_indexes'][0]]['question']
+    await update.message.reply_text(f'Пройдите опрос. {quest}')
 
 
 async def echo(update, context):
-    text = update.message.text.lower()
-    for i in string.punctuation:
-        if i == '-':
-            continue
-        text = text.replace(i, '')
-    text = text.replace('—', '')
+    try:
+        text = update.message.text.lower()
+        if text == question[context.user_data['last_indexes'][-1]]['response']:
+            context.user_data['right_response'] += 1
+            if len(context.user_data['last_indexes']) == 10:
+                await update.message.reply_text(f'Конец. Количество правильных ответов '
+                                                f'{context.user_data['right_response']}')
+                return
 
-    print(context.user_data['poem_index'])
-    if len(poem) <= context.user_data['poem_index']:
-        await update.message.reply_text('ы справился, Повторим? /start')
-        return
+        while True:
+            index = random.randint(0, len(question) - 1)
+            if index not in context.user_data['last_indexes']:
+                break
+        context.user_data['last_indexes'].append(index)
+        quest = question[context.user_data['last_indexes'][-1]]['question']
+        await update.message.reply_text(quest)
+    except KeyError:
+        await update.message.reply_text('Я не знаю, что делать')
 
-    if text == poem_without_punc[context.user_data['poem_index'] + 1]:
-        context.user_data['poem_index'] += 2
-        if len(poem) - 1 < context.user_data['poem_index']:
-            await update.message.reply_text('Ты справился, Повторим? /start')
-        else:
-            if len(poem) - 1 <= context.user_data['poem_index']:
-                await update.message.reply_text(f'{poem[context.user_data['poem_index']]} '
-                                                f'Ты справился, Повторим? /start')
-            else:
-                await update.message.reply_text(f'{poem[context.user_data['poem_index']]} ')
-    else:
-        await update.message.reply_text('нет, не так. Подсказка /suphler')
+
+async def stop(update, context):
+    context.user_data.pop('last_indexes', None)
+    context.user_data.pop('right_response', None)
+    await update.message.reply_text('тест сброшен')
 
 
 # Запускаем функцию main() в случае запуска скрипта.

@@ -42,6 +42,8 @@ def main():
     # Регистрируем обработчик в приложении.
 
     application.add_handler(CommandHandler('start', start))
+    application.add_handler(CommandHandler('stop', stop))
+    application.add_handler(CommandHandler('suphler', suphler))
     application.add_handler(MessageHandler(filters.TEXT, echo))
 
     # Запускаем приложение.
@@ -79,6 +81,16 @@ async def echo(update, context):
                 await update.message.reply_text(f'{poem[context.user_data['poem_index']]} ')
     else:
         await update.message.reply_text('нет, не так. Подсказка /suphler')
+
+
+async def suphler(update, context):
+    await update.message.reply_text(f'{poem[context.user_data['poem_index']]
+    [min(15, len(poem[context.user_data['poem_index']]))]}...')
+
+
+async def stop(update, context):
+    context.user_data.pop('poem_index', None)
+    await update.message.reply_text('Остановлено')
 
 
 # Запускаем функцию main() в случае запуска скрипта.

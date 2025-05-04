@@ -1,44 +1,49 @@
 {
-  "test": [
-    {
-      "question": "В каком году была война 1812 года?",
-      "response": "1812"
-    },
-    {
-      "question": "В каком году была война 1813 года?",
-      "response": "1813"
-    },
-    {
-      "question": "В каком году была война 1814 года?",
-      "response": "1814"
-    },
-    {
-      "question": "В каком году была война 1815 года?",
-      "response": "1815"
-    },
-    {
-      "question": "В каком году была война 1816 года?",
-      "response": "1816"
-    },
-    {
-      "question": "В каком году была война 1817 года?",
-      "response": "1817"
-    },
-    {
-      "question": "В каком году была война 1818 года?",
-      "response": "1818"
-    },
-    {
-      "question": "В каком году была война 1819 года?",
-      "response": "1819"
-    },
-    {
-      "question": "В каком году была война 1820 года?",
-      "response": "1820"
-    },
-    {
-      "question": "В каком году была война 1821 года?",
-      "response": "1821"
+  "metaDataProperty": {
+    "GeocoderMetaData": {
+      "precision": "other",
+      "text": "Россия, Москва",
+      "kind": "province",
+      "Address": {
+        "country_code": "RU",
+        "formatted": "Россия, Москва",
+        "Components": [
+          {
+            "kind": "country",
+            "name": "Россия"
+          },
+          {
+            "kind": "province",
+            "name": "Центральный федеральный округ"
+          },
+          {
+            "kind": "province",
+            "name": "Москва"
+          }
+        ]
+      },
+      "AddressDetails": {
+        "Country": {
+          "AddressLine": "Россия, Москва",
+          "CountryNameCode": "RU",
+          "CountryName": "Россия",
+          "AdministrativeArea": {
+            "AdministrativeAreaName": "Москва"
+          }
+        }
+      }
     }
-  ]
+  },
+  "name": "Москва",
+  "description": "Россия",
+  "boundedBy": {
+    "Envelope": {
+      "lowerCorner": "36.803079 55.142226",
+      "upperCorner": "37.967466 56.021286"
+    }
+  },
+  "uri": "ymapsbm1://geo?data=Cgg1MzAwMDA5NBIa0KDQvtGB0YHQuNGPLCDQnNC-0YHQutCy0LAiCg2GeBZCFQEGX0I,",
+  "Point": {
+    "pos": "37.617698 55.755864"
+  }
 }

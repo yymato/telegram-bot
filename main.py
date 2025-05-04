@@ -1,9 +1,8 @@
 # Импортируем необходимые классы.
-import json
 import logging
-import random
 
-from telegram.ext import Application, MessageHandler, filters, CommandHandler
+import requests
+from telegram.ext import Application, MessageHandler, filters
 
 # Запускаем логгирование
 logging.basicConfig(
@@ -11,8 +10,6 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-with open('data.json', 'r', encoding='utf-8') as f:
-    question = json.load(f)['test']
 
 
 def main():
@@ -26,47 +23,59 @@ def main():
     # эта асинхронная функция будет вызываться при получении сообщения
     # с типом "текст", т. е. текстовых сообщений.
     # Регистрируем обработчик в приложении.
-
-    application.add_handler(CommandHandler('start', start))
-    application.add_handler(CommandHandler('stop', stop))
     application.add_handler(MessageHandler(filters.TEXT, echo))
 
     # Запускаем приложение.
     application.run_polling()
 
 
-async def start(update, context):
-    context.user_data['last_indexes'] = [random.randint(0, len(question) - 1)]
-    context.user_data['right_response'] = 0
-    quest = question[context.user_data['last_indexes'][0]]['question']
-    await update.message.reply_text(f'Пройдите опрос. {quest}')
+def get_coords_from_geocoder(toponym_to_find):
+    geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
+
+    geocoder_params = {
+        "apikey": "8013b162-6b42-4997-9691-77b7074026e0",
+        "geocode": toponym_to_find,
+        "format": "json"}
+
+    response = requests.get(geocoder_api_server, params=geocoder_params)
+
+    if not response:
+        # обработка ошибочной ситуации
+        pass
+
+    # Преобразуем ответ в json-объект
+    json_response = response.json()
+    # Получаем первый топоним из ответа геокодера.
+    toponym = json_response["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]
+    # Координаты центра топонима:
+    toponym_coodrinates = toponym["Point"]["pos"]
+
+    # Долгота и широта:
+    toponym_longitude, toponym_lattitude = toponym_coodrinates.split(" ")
+    self_point = f'{toponym_longitude},{toponym_lattitude}'
+    return self_point, toponym['description']
 
 
 async def echo(update, context):
-    try:
-        text = update.message.text.lower()
-        if text == question[context.user_data['last_indexes'][-1]]['response']:
-            context.user_data['right_response'] += 1
-            if len(context.user_data['last_indexes']) == 10:
-                await update.message.reply_text(f'Конец. Количество правильных ответов '
-                                                f'{context.user_data['right_response']}')
-                return
+    text = update.message.text.lower()
+    coords = get_coords_from_geocoder(text)
 
-        while True:
-            index = random.randint(0, len(question) - 1)
-            if index not in context.user_data['last_indexes']:
-                break
-        context.user_data['last_indexes'].append(index)
-        quest = question[context.user_data['last_indexes'][-1]]['question']
-        await update.message.reply_text(quest)
-    except KeyError:
-        await update.message.reply_text('Я не знаю, что делать')
+    server = "http://static-maps.yandex.ru/v1?"
 
+    param = {'apikey': 'f3a0fe3a-b07e-4840-a1da-06f18b2ddf13',
+             'll': coords[0],
+             'z': 15}
+    response = requests.get(server, params=param)
 
-async def stop(update, context):
-    context.user_data.pop('last_indexes', None)
-    context.user_data.pop('right_response', None)
-    await update.message.reply_text('тест сброшен')
+    if response.status_code == 200:
+        await update.message.reply_photo(
+            photo=response.content,
+            caption=coords[1],
+            parse_mode="Markdown"
+        )
+    else:
+        await update.message.reply_text('Не удалось загрузить карту.')
+
 
 
 # Запускаем функцию main() в случае запуска скрипта.

@@ -2,6 +2,7 @@
 import logging
 
 import requests
+from telegram import ReplyKeyboardMarkup
 from telegram.ext import Application, MessageHandler, filters
 
 # Запускаем логгирование
@@ -10,6 +11,16 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+
+def translate_word(word, source_lang='ru', target_lang='en'):
+    url = f"https://api.mymemory.translated.net/get?q={word}&langpair={source_lang}|{target_lang}"
+    response = requests.get(url)
+    if response:
+        data = response.json()
+        if data.get('responseData'):
+            return data['responseData']['translatedText'].lower()
+    return None
 
 
 def main():
@@ -29,53 +40,21 @@ def main():
     application.run_polling()
 
 
-def get_coords_from_geocoder(toponym_to_find):
-    geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
-
-    geocoder_params = {
-        "apikey": "8013b162-6b42-4997-9691-77b7074026e0",
-        "geocode": toponym_to_find,
-        "format": "json"}
-
-    response = requests.get(geocoder_api_server, params=geocoder_params)
-
-    if not response:
-        # обработка ошибочной ситуации
-        pass
-
-    # Преобразуем ответ в json-объект
-    json_response = response.json()
-    # Получаем первый топоним из ответа геокодера.
-    toponym = json_response["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]
-    # Координаты центра топонима:
-    toponym_coodrinates = toponym["Point"]["pos"]
-
-    # Долгота и широта:
-    toponym_longitude, toponym_lattitude = toponym_coodrinates.split(" ")
-    self_point = f'{toponym_longitude},{toponym_lattitude}'
-    return self_point, toponym['description']
-
-
 async def echo(update, context):
+    reply_keyboard = [['сменить направление перевода']]
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
+
+    if 'direction' not in context.user_data:
+        context.user_data['direction'] = 'ru-en'
     text = update.message.text.lower()
-    coords = get_coords_from_geocoder(text)
-
-    server = "http://static-maps.yandex.ru/v1?"
-
-    param = {'apikey': 'f3a0fe3a-b07e-4840-a1da-06f18b2ddf13',
-             'll': coords[0],
-             'z': 15}
-    response = requests.get(server, params=param)
-
-    if response.status_code == 200:
-        await update.message.reply_photo(
-            photo=response.content,
-            caption=coords[1],
-            parse_mode="Markdown"
-        )
+    print(text)
+    if text == 'сменить направление перевода':
+        context.user_data['direction'] = 'ru-en' if context.user_data['direction'] == 'en-ru' else 'en-ru'
+        await update.message.reply_text(f'направление перевода {context.user_data['direction']}', reply_markup=markup)
     else:
-        await update.message.reply_text('Не удалось загрузить карту.')
-
+        await update.message.reply_text(translate_word(text, context.user_data['direction'].split('-')[0],
+                                                       context.user_data['direction'].split('-')[1]),
+                                        reply_markup=markup)
 
 
 # Запускаем функцию main() в случае запуска скрипта.
